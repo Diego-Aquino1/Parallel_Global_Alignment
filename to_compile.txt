@@ -1,0 +1,2 @@
+g++ −g −Wall −fopenmp −o parallel_alignment parallel_alignment.cpp
+

@@ -1,8 +1,10 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include <chrono>
 
 using namespace std;
+using namespace std::chrono;
 
 class NeedlemanWunsch {
 private:
@@ -27,10 +29,14 @@ public:
         }
 
     void align() {
+        auto start = high_resolution_clock::now();
         initialize_matrices();
         fill_matrices();
-        traceback(m, n, "", "");
+        // traceback(m, n, "", "");
         write_results();
+        auto stop = high_resolution_clock::now();
+        auto duration = duration_cast<milliseconds>(stop - start);
+        std::cout << "Tiempo de ejecución: " << duration.count() << " milisegundos\n";
     }
 
 private:
@@ -118,8 +124,12 @@ private:
 };
 
 int main() {
-    std::string seq1 = "ACTGATTCA";
-    std::string seq2 = "ACGCATCA";
+    // std::string seq1 = "ACTGATTCA";
+    // std::string seq2 = "ACGCATCA";
+
+    std::string seq1 = "atggaagcaatatcactgatgactatactactggtggtaacaacaagtaatgcagacaaaatctgcatcggtcaccaatcaacaaattccacggaaactgtagacacgctaacagaaacaaatgttcctgtaacacaagccaaagaattgctccacacagaacacaatgggatgctatgtgcaacaaatctgggacgtcctcttatcctagacacatgcaccattgaaggactgatctatggcaacccatcttgtgacatgctgttaggaggaagggaatggtcctacatcgtcgaaagaccgtccgcagtaaatggaacatgctaccctggaaatgtagaaaacctagaggaacttagaacactttttagctcctctagttcttaccaaagagtccaactctttccagactcaatctggaatgtgacttacactgggacaagcaaatcatgttcagattcattctataggaatatgagatggttaactcaaaagaatgggggttatccaattcaagatgcccagtacacaaacaataggggaaaggacattcttttcgtgtggggcatacatcatccaccaaccgatactgcacagacgaatttatatacaaggaccgacacaacaacaagtgtaacaacggagactttagataggaccttcaaaccattgatagggccaaggccccttgtcaatggtctaattggaagaattaattactattggtcggtactaaaaccaggccaaacgttgcgagtgagatcaaatggaaatctaattgctccatggtttggacatgttctctcaggtgagagccatgtgagaatcctgagaactgatttaagcagcggtaattgtgtggtacaatgccagactgaaaaaggtggcctaaacagtacaatgccatttcacaacatcagcaaatatgcttttgggacctgtcccaaatatattggagtcaagagtctcaaactggcaattggccttagaaacgtacatgctaggtcaagtagaggactattcggagcgatagctggattcatagaaggaggttggccaggactagtcgccggttggtat";
+    std::string seq2 = "attaaaggtttataccttcccaggtaacaaaccaaccaactttcgatctcttgtagatctgttctctaaacgaactttaaaatctgtgtggctgtcactcggctgcatgcttagtgcactcacgcagtataattaataactaattactgtcgttgacaggacacgagtaactcgtctatcttctgcaggctgcttacggtttcgtccgtgttgcagccgatcatcagcacatctaggtttcgtccgggtgtgaccgaaaggtaagatggagagccttgtccctggtttcaacgagaaaacacacgtccaactcagtttgcctgttttacaggttcgcgacgtgctcgtacgtggctttggagactccgtggaggaggtcttatcagaggcacgtcaacatcttaaagatggcacttgtggcttagtagaagttgaaaaaggcgttttgcctcaacttgaacagccctatgtgttcatcaaacgttcggatgctcgaactgcacctcatggtcatgttatggttgagctggtagcagaactcgaaggcattcagtacggtcgtagtggtgagacacttggtgtccttgtccctcatgtgggcgaaataccagtggcttaccgcaaggttcttcttcgtaagaacggtaataaaggagctggtggccatagttacggcgccgatctaaagtcatttgacttaggcgacgagcttggcactgatccttatgaagattttcaagaaaactggaacactaaacatagcagtggtgttacccgtgaactcatgcgtgagcttaacggaggggcatacactcgctatgtcgataacaacttctgtggccctgatggctaccctcttgagtgcattaaagaccttctagcacgtgctggtaaagcttcatgcactttgtccgaacaactggactttattgacactaagaggggtgtatactgctgccgtgaacatgagcatgaaattgcttggtacacggaacgttctgaaaagagctatgaattgcagacaccttttgaaattaaattggcaaagaaatttgacaccttcaatggggaatgtccaaa";
+
     NeedlemanWunsch nw(seq1, seq2);
     nw.align();
     return 0;

@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include <functional>
 #include <omp.h>
 
 class NeedlemanWunsch {
@@ -26,13 +27,25 @@ public:
     }
 
     void align() {
+        double start_time = omp_get_wtime();
         initialize_matrices();
         fill_matrices();
         //traceback(m, n, "", "");
         write_results();
+        double end_time = omp_get_wtime();
+        double elapsed_time = (end_time - start_time) * 1000.0;
+        std::cout << "Tiempo de ejecución: " << elapsed_time << " milisegundos\n";
     }
 
 private:
+
+    std::string removeSpaces(std::string str) {
+
+        str.erase(remove(str.begin(), str.end(), ' '), str.end());
+        return str;
+
+    }
+
     void initialize_matrices() {
         for (int i = 1; i <= m; ++i) {
             score_matrix[i][0] = score_matrix[i - 1][0] + gap_penalty;
@@ -45,32 +58,36 @@ private:
     }
 
     void fill_matrices() {
+        std::vector<std::vector<std::vector<std::pair<int, int>>>> local_traceback_matrix(m + 1, std::vector<std::vector<std::pair<int, int>>>(n + 1));
+
         #pragma omp parallel for collapse(2)
         for (int i = 1; i <= m; ++i) {
             for (int j = 1; j <= n; ++j) {
                 int match = score_matrix[i - 1][j - 1] + (seq1[i - 1] == seq2[j - 1] ? match_score : mismatch_score);
                 int delete_op = score_matrix[i - 1][j] + gap_penalty;
                 int insert_op = score_matrix[i][j - 1] + gap_penalty;
-                int max_score = std::max(std::max(match, delete_op), insert_op); // Anidar std::max
+                int max_score = std::max(std::max(match, delete_op), insert_op);
                 score_matrix[i][j] = max_score;
+
                 if (match == max_score) {
-                    #pragma omp critical
-                    {
-                        traceback_matrix[i][j].push_back(std::make_pair(i - 1, j - 1));
-                    }
+                    local_traceback_matrix[i][j].push_back(std::make_pair(i - 1, j - 1));
                 }
                 if (delete_op == max_score) {
-                    #pragma omp critical
-                    {
-                        traceback_matrix[i][j].push_back(std::make_pair(i - 1, j));
-                    }
+                    local_traceback_matrix[i][j].push_back(std::make_pair(i - 1, j));
                 }
                 if (insert_op == max_score) {
-                    #pragma omp critical
-                    {
-                        traceback_matrix[i][j].push_back(std::make_pair(i, j - 1));
-                    }
+                    local_traceback_matrix[i][j].push_back(std::make_pair(i, j - 1));
                 }
+            }
+        }
+
+        // Merge local_traceback_matrix into traceback_matrix
+        #pragma omp parallel for collapse(2)
+        for (int i = 1; i <= m; ++i) {
+            for (int j = 1; j <= n; ++j) {
+                traceback_matrix[i][j].insert(traceback_matrix[i][j].end(),
+                                            local_traceback_matrix[i][j].begin(),
+                                            local_traceback_matrix[i][j].end());
             }
         }
     }
@@ -96,7 +113,7 @@ private:
     }
 
     void write_results() {
-        std::ofstream file("parallel_alignment_results.txt");
+        std::ofstream file("D:/UNSA/5/Bioinformatica/Parallel_Global_Alignment/parallel_alignment_results.txt");
         if (file.is_open()) {
             file << "Score Matrix:\n";
             for (auto& row : score_matrix) {
@@ -118,7 +135,7 @@ private:
                 file << alignments[i].second << "\n\n";
             }
             file.close();
-            std::cout << "Results written to alignment_results.txt\n";
+            std::cout << "Results written to parallel_alignment_results.txt\n";
         }
         else {
             std::cerr << "Unable to open file for writing.\n";
@@ -127,8 +144,15 @@ private:
 };
 
 int main() {
-    std::string seq1 = "ACTGATTCA";
-    std::string seq2 = "ACGCATCA";
+    omp_set_num_threads(12);
+    // std::string seq1 = "ACTGATTCA";
+    // std::string seq2 = "ACGCATCA";
+
+    std::string seq1 = "atggaagcaatatcactgatgactatactactggtggtaacaacaagtaatgcagacaaaatctgcatcggtcaccaatcaacaaattccacggaaactgtagacacgctaacagaaacaaatgttcctgtaacacaagccaaagaattgctccacacagaacacaatgggatgctatgtgcaacaaatctgggacgtcctcttatcctagacacatgcaccattgaaggactgatctatggcaacccatcttgtgacatgctgttaggaggaagggaatggtcctacatcgtcgaaagaccgtccgcagtaaatggaacatgctaccctggaaatgtagaaaacctagaggaacttagaacactttttagctcctctagttcttaccaaagagtccaactctttccagactcaatctggaatgtgacttacactgggacaagcaaatcatgttcagattcattctataggaatatgagatggttaactcaaaagaatgggggttatccaattcaagatgcccagtacacaaacaataggggaaaggacattcttttcgtgtggggcatacatcatccaccaaccgatactgcacagacgaatttatatacaaggaccgacacaacaacaagtgtaacaacggagactttagataggaccttcaaaccattgatagggccaaggccccttgtcaatggtctaattggaagaattaattactattggtcggtactaaaaccaggccaaacgttgcgagtgagatcaaatggaaatctaattgctccatggtttggacatgttctctcaggtgagagccatgtgagaatcctgagaactgatttaagcagcggtaattgtgtggtacaatgccagactgaaaaaggtggcctaaacagtacaatgccatttcacaacatcagcaaatatgcttttgggacctgtcccaaatatattggagtcaagagtctcaaactggcaattggccttagaaacgtacatgctaggtcaagtagaggactattcggagcgatagctggattcatagaaggaggttggccaggactagtcgccggttggtat";
+    std::string seq2 = "attaaaggtttataccttcccaggtaacaaaccaaccaactttcgatctcttgtagatctgttctctaaacgaactttaaaatctgtgtggctgtcactcggctgcatgcttagtgcactcacgcagtataattaataactaattactgtcgttgacaggacacgagtaactcgtctatcttctgcaggctgcttacggtttcgtccgtgttgcagccgatcatcagcacatctaggtttcgtccgggtgtgaccgaaaggtaagatggagagccttgtccctggtttcaacgagaaaacacacgtccaactcagtttgcctgttttacaggttcgcgacgtgctcgtacgtggctttggagactccgtggaggaggtcttatcagaggcacgtcaacatcttaaagatggcacttgtggcttagtagaagttgaaaaaggcgttttgcctcaacttgaacagccctatgtgttcatcaaacgttcggatgctcgaactgcacctcatggtcatgttatggttgagctggtagcagaactcgaaggcattcagtacggtcgtagtggtgagacacttggtgtccttgtccctcatgtgggcgaaataccagtggcttaccgcaaggttcttcttcgtaagaacggtaataaaggagctggtggccatagttacggcgccgatctaaagtcatttgacttaggcgacgagcttggcactgatccttatgaagattttcaagaaaactggaacactaaacatagcagtggtgttacccgtgaactcatgcgtgagcttaacggaggggcatacactcgctatgtcgataacaacttctgtggccctgatggctaccctcttgagtgcattaaagaccttctagcacgtgctggtaaagcttcatgcactttgtccgaacaactggactttattgacactaagaggggtgtatactgctgccgtgaacatgagcatgaaattgcttggtacacggaacgttctgaaaagagctatgaattgcagacaccttttgaaattaaattggcaaagaaatttgacaccttcaatggggaatgtccaaa";
+
+    std::cout << "COMPILO";
+
     NeedlemanWunsch nw(seq1, seq2);
     nw.align();
     return 0;
